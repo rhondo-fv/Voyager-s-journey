@@ -1,0 +1,1731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voyager's Last Signal — Pop Edition</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Fredoka+One&display=swap');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a1a; overflow: hidden; font-family: 'Nunito', sans-serif; color: #e8e0ff; }
+canvas { display: block; }
+#ui {
+  position: absolute; top: 14px; left: 14px; z-index: 10; pointer-events: none;
+  background: linear-gradient(135deg, rgba(60,20,120,0.55), rgba(20,10,60,0.5));
+  border: 2px solid rgba(180,120,255,0.25); border-radius: 16px;
+  padding: 12px 16px; backdrop-filter: blur(8px); min-width: 200px;
+  box-shadow: 0 4px 20px rgba(120,60,220,0.15), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+#ui .hud-row { display: flex; align-items: center; margin-bottom: 4px; }
+#ui .hud-label { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(200,170,255,0.6); }
+#ui .hud-value { font-family: 'Fredoka One', sans-serif; font-size: 28px; color: #fff; text-shadow: 0 0 12px rgba(180,120,255,0.5); }
+#ui .hud-value.power-val { font-size: 32px; }
+#ui .hud-unit { font-size: 12px; color: rgba(200,170,255,0.5); margin-left: 2px; font-weight: 700; }
+#power-bar { width: 100%; height: 8px; margin-top: 4px; margin-bottom: 10px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; }
+#power-fill { height: 100%; border-radius: 4px; transition: width 0.3s, background 0.5s; background: linear-gradient(90deg, #a855f7, #ec4899); box-shadow: 0 0 12px rgba(168,85,247,0.5); }
+#ui .hud-divider { height: 1px; background: rgba(180,120,255,0.12); margin: 8px 0; }
+#ui .hud-bottom { display: flex; gap: 16px; }
+#ui .hud-stat { flex: 1; }
+#ui .hud-stat-val { font-family: 'Fredoka One', sans-serif; font-size: 16px; color: #e0d0ff; }
+#combo-display { position: absolute; top: 16px; left: 240px; z-index: 10; pointer-events: none; font-family: 'Fredoka One', sans-serif; font-size: 22px; color: #fbbf24; text-shadow: 0 0 16px rgba(251,191,36,0.6), 0 2px 0 rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s; }
+#shield-display { position: absolute; bottom: 14px; left: 14px; z-index: 10; pointer-events: none; font-size: 11px; font-weight: 700; letter-spacing: 1px; color: rgba(120,220,255,0.5); background: linear-gradient(135deg, rgba(20,40,80,0.5), rgba(10,20,50,0.4)); border: 2px solid rgba(80,200,255,0.15); border-radius: 12px; padding: 6px 14px; backdrop-filter: blur(4px); }
+#shield-display.ready { color: #67e8f9; border-color: rgba(103,232,249,0.4); box-shadow: 0 0 10px rgba(103,232,249,0.15); }
+#sound-controls { position: absolute; top: 14px; right: 14px; z-index: 20; display: flex; gap: 6px; }
+#sound-controls button { background: linear-gradient(135deg, rgba(60,20,120,0.5), rgba(20,10,60,0.45)); border: 1.5px solid rgba(180,120,255,0.2); border-radius: 10px; padding: 5px 10px; font-size: 16px; cursor: pointer; color: #d8b4fe; backdrop-filter: blur(4px); transition: background 0.2s, border-color 0.2s, opacity 0.2s; line-height: 1; }
+#sound-controls button:hover { background: linear-gradient(135deg, rgba(80,30,150,0.5), rgba(30,15,80,0.5)); border-color: rgba(180,120,255,0.4); }
+#sound-controls button.muted { opacity: 0.4; }
+#zone-label { position: absolute; top: 46px; right: 16px; z-index: 10; pointer-events: none; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(200,180,255,0.35); text-align: right; }
+#zone-announce { position: absolute; top: 44%; left: 50%; transform: translate(-50%,-50%); z-index: 15; pointer-events: none; font-family: 'Fredoka One', sans-serif; font-size: 26px; letter-spacing: 3px; color: rgba(200,160,255,0.85); text-shadow: 0 0 30px rgba(160,100,255,0.5), 0 3px 0 rgba(0,0,0,0.2); opacity: 0; transition: opacity 1s; white-space: nowrap; }
+#milestone { position: absolute; bottom: 56px; left: 50%; transform: translateX(-50%); z-index: 15; pointer-events: none; font-size: 14px; font-weight: 700; color: #fbbf24; text-shadow: 0 0 12px rgba(251,191,36,0.4), 0 2px 0 rgba(0,0,0,0.2); opacity: 0; transition: opacity 0.6s; white-space: nowrap; }
+#comlink { position: absolute; bottom: 96px; left: 50%; transform: translateX(-50%); z-index: 12; pointer-events: none; font-size: 12px; font-weight: 700; color: rgba(110,230,180,0.6); text-shadow: 0 0 8px rgba(60,200,140,0.3); opacity: 0; transition: opacity 0.5s; white-space: nowrap; max-width: 80vw; overflow: hidden; text-overflow: ellipsis; }
+#game-over { position: absolute; inset: 0; background: linear-gradient(180deg, #0a0a1a 0%, #1a0a2e 100%); z-index: 100; display: none; flex-direction: column; align-items: center; justify-content: center; opacity: 0; transition: opacity 1.5s; }
+#pale-blue-dot { width: 100%; max-width: 500px; height: 300px; position: relative; margin-bottom: 24px; border-radius: 12px; overflow: hidden; border: 2px solid rgba(180,120,255,0.15); }
+#pale-blue-dot canvas { width: 100%; height: 100%; }
+#journey-map { width: 100%; max-width: 520px; height: 70px; margin-bottom: 16px; border-radius: 10px; overflow: hidden; border: none; }
+#journey-map canvas { width: 100%; height: 100%; }
+#log-text { max-width: 600px; text-align: left; font-size: 15px; line-height: 2; font-weight: 700; color: rgba(200,170,255,0.7); padding: 0 20px; min-height: 120px; }
+#restart-btn { margin-top: 24px; padding: 14px 40px; background: linear-gradient(135deg, rgba(168,85,247,0.2), rgba(236,72,153,0.15)); border: 2px solid rgba(168,85,247,0.35); border-radius: 14px; color: #d8b4fe; font-family: 'Fredoka One', sans-serif; font-size: 16px; cursor: pointer; opacity: 0; transition: opacity 0.5s, background 0.3s, transform 0.2s; }
+#restart-btn:hover { background: linear-gradient(135deg, rgba(168,85,247,0.35), rgba(236,72,153,0.25)); transform: scale(1.04); }
+#start-screen { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 30%, rgba(60,20,120,0.4) 0%, rgba(10,5,30,1) 70%); z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+#start-screen h1 { font-family: 'Fredoka One', sans-serif; font-size: 34px; color: #e0c0ff; text-shadow: 0 0 30px rgba(160,100,255,0.4), 0 4px 0 rgba(80,30,140,0.3); margin-bottom: 18px; }
+#start-screen p { color: rgba(200,180,230,0.6); font-size: 13px; margin-bottom: 14px; max-width: 420px; text-align: center; line-height: 1.8; }
+#start-btn { padding: 16px 48px; background: linear-gradient(135deg, #a855f7, #ec4899); border: none; border-radius: 14px; color: #fff; font-family: 'Fredoka One', sans-serif; font-size: 18px; cursor: pointer; box-shadow: 0 4px 20px rgba(168,85,247,0.4), 0 2px 0 rgba(0,0,0,0.2); transition: transform 0.2s, box-shadow 0.3s; }
+#start-btn:hover { transform: scale(1.06); box-shadow: 0 6px 28px rgba(168,85,247,0.55); }
+#legend { position: absolute; bottom: 14px; right: 14px; z-index: 10; pointer-events: none; background: linear-gradient(135deg, rgba(60,20,120,0.4), rgba(20,10,60,0.35)); border: 1px solid rgba(180,120,255,0.12); border-radius: 12px; padding: 8px 14px; backdrop-filter: blur(4px); display: flex; flex-direction: column; gap: 4px; opacity: 0.7; transition: opacity 2s; }
+.legend-item { display: flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 700; color: rgba(200,180,230,0.5); }
+.legend-icon { display: inline-block; width: 8px; height: 8px; border-radius: 3px; flex-shrink: 0; }
+#glitch-overlay { position: absolute; inset: 0; z-index: 5; pointer-events: none; opacity: 0; mix-blend-mode: overlay; }
+#low-power-overlay { position: absolute; inset: 0; z-index: 4; pointer-events: none; opacity: 0; border: 3px solid transparent; transition: opacity 0.3s; }
+#countdown-overlay { position: absolute; inset: 0; z-index: 50; pointer-events: none; display: none; align-items: center; justify-content: center; background: rgba(10,5,30,0.6); }
+#countdown-text { font-family: 'Fredoka One', sans-serif; font-size: 80px; color: #e0c0ff; text-shadow: 0 0 40px rgba(168,85,247,0.6), 0 4px 0 rgba(80,30,140,0.4); opacity: 0; transition: opacity 0.2s; }
+</style>
+</head>
+<body>
+<div id="start-screen">
+  <h1>🚀 VOYAGER'S LAST SIGNAL</h1>
+  <div style="max-width:440px;text-align:center;margin-bottom:24px;">
+    <p style="color:rgba(200,170,255,0.5);font-size:11px;letter-spacing:2px;margin-bottom:12px;">✦ MISSION BRIEFING — 1977.09.05 ✦</p>
+    <p style="color:rgba(220,200,250,0.65);font-size:14px;line-height:1.9;margin-bottom:10px;">人類が作り上げた小さな探査機が、<br>ケープカナベラルの発射台を離れた。</p>
+    <p style="color:rgba(200,180,240,0.55);font-size:14px;line-height:1.9;margin-bottom:10px;">その名は <span style="color:#d8b4fe;">ボイジャー1号</span>。<br>搭載された原子力電池の寿命が尽きるまで、<br>誰も到達したことのない深淵を目指し、飛び続ける。</p>
+    <p style="color:rgba(180,160,220,0.4);font-size:13px;line-height:1.9;">地球の声を刻んだゴールデンレコードを携えて——<br>太陽系の果て、その先の虚空へ。</p>
+  </div>
+  <div style="max-width:360px;margin:0 auto 20px;text-align:left;line-height:1.8;">
+    <p style="color:rgba(103,232,249,0.5);font-size:11px;font-weight:700;">🛡️ SPACE / ダブルタップ — シールドバースト</p>
+    <p style="color:rgba(200,180,240,0.4);font-size:11px;font-weight:700;margin-top:4px;">🎮 ↑↓キー / マウス / タッチ で上下移動</p>
+  </div>
+  <button id="start-btn">🛸 ミッション開始</button>
+</div>
+<canvas id="game"></canvas>
+<div id="ui">
+  <div class="hud-label">⚡ POWER</div>
+  <div class="hud-row"><div class="hud-value power-val"><span id="power-val">100</span><span class="hud-unit">%</span></div></div>
+  <div id="power-bar"><div id="power-fill"></div></div>
+  <div class="hud-divider"></div>
+  <div class="hud-bottom">
+    <div class="hud-stat"><div class="hud-label">DISTANCE</div><div class="hud-stat-val"><span id="dist-val">0.00</span><span class="hud-unit"> AU</span></div></div>
+    <div class="hud-stat"><div class="hud-label">SPEED</div><div class="hud-stat-val"><span id="speed-val">1.0</span><span class="hud-unit">x</span></div></div>
+  </div>
+</div>
+<div id="combo-display"></div>
+<div id="shield-display"></div>
+<div id="legend">
+  <div class="legend-item"><span class="legend-icon" style="background:#888;"></span><span>🪨 小惑星 −25</span></div>
+  <div class="legend-item"><span class="legend-icon" style="background:#c66;"></span><span>💨 高速小惑星</span></div>
+  <div class="legend-item"><span class="legend-icon" style="background:#da2;border-radius:50%;"></span><span>💿 レコード +10</span></div>
+  <div class="legend-item"><span class="legend-icon" style="background:rgba(140,220,180,0.6);border-radius:50%;"></span><span>🪐 惑星 加速</span></div>
+</div>
+<div id="sound-controls">
+  <button id="btn-bgm" title="BGM">🎵</button>
+  <button id="btn-sfx" title="効果音">🔊</button>
+</div>
+<div id="zone-label"></div>
+<div id="zone-announce"></div>
+<div id="milestone"></div>
+<div id="comlink"></div>
+<div id="glitch-overlay"></div>
+<div id="low-power-overlay"></div>
+<div id="countdown-overlay"><div id="countdown-text"></div></div>
+<div id="game-over">
+  <div id="pale-blue-dot"><canvas id="pbd-canvas"></canvas></div>
+  <div id="journey-map"><canvas id="map-canvas"></canvas></div>
+  <div id="log-text"></div>
+  <button id="restart-btn">🔄 ミッション再挑戦</button>
+</div>
+
+<script>
+// === DOM ===
+const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
+const powerVal = document.getElementById('power-val'), powerFill = document.getElementById('power-fill');
+const distVal = document.getElementById('dist-val'), speedVal = document.getElementById('speed-val');
+const glitch = document.getElementById('glitch-overlay'), lowPowerOv = document.getElementById('low-power-overlay');
+const gameOverScreen = document.getElementById('game-over'), logText = document.getElementById('log-text');
+const restartBtn = document.getElementById('restart-btn'), startScreen = document.getElementById('start-screen');
+const startBtn = document.getElementById('start-btn'), zoneLabel = document.getElementById('zone-label');
+const zoneAnnounce = document.getElementById('zone-announce'), milestoneEl = document.getElementById('milestone');
+const comboDisplay = document.getElementById('combo-display'), shieldDisplay = document.getElementById('shield-display');
+const comlinkEl = document.getElementById('comlink');
+
+let W, H;
+function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+resize(); window.addEventListener('resize', resize);
+
+// === ZONES ===
+const ZONES = [
+  { name: 'Inner Solar System',  minAU: 0,   bg: [0,0,8],  starDen: 1.0, starBri: 1.0 },
+  { name: 'Outer Solar System',  minAU: 5,   bg: [0,0,5],  starDen: 0.85, starBri: 0.9 },
+  { name: 'Kuiper Belt',         minAU: 30,  bg: [2,1,4],  starDen: 0.6, starBri: 0.7 },
+  { name: 'Heliosheath',         minAU: 80,  bg: [3,1,2],  starDen: 0.4, starBri: 0.55 },
+  { name: 'Interstellar Space',  minAU: 122, bg: [1,0,2],  starDen: 0.25, starBri: 0.4 },
+  { name: 'Galactic Outer Rim',  minAU: 300, bg: [0,0,1],  starDen: 0.1, starBri: 0.25 },
+  { name: 'Intergalactic Void',  minAU: 600, bg: [0,0,0],  starDen: 0.03, starBri: 0.12 },
+];
+function getZone(au) { for (let i = ZONES.length - 1; i >= 0; i--) if (au >= ZONES[i].minAU) return ZONES[i]; return ZONES[0]; }
+
+// === MILESTONES ===
+const MILESTONES = [
+  { au: 0.39, name: 'Mercury',  color: '#aaa', r: 12 },
+  { au: 0.72, name: 'Venus',    color: '#ea8', r: 16 },
+  { au: 1.0,  name: 'Earth',    color: '#4af', r: 18, isEarth: true },
+  { au: 1.52, name: 'Mars',     color: '#e54', r: 14 },
+  { au: 5.2,  name: 'Jupiter',  color: '#da6', r: 50 },
+  { au: 9.5,  name: 'Saturn',   color: '#ec8', r: 42, hasRing: true },
+  { au: 19.2, name: 'Uranus',   color: '#8de', r: 30 },
+  { au: 30.1, name: 'Neptune',  color: '#46c', r: 28 },
+  { au: 39.5, name: 'Pluto',    color: '#987', r: 8 },
+  { au: 122,  name: 'Heliopause — Leaving the Solar System', color: '#a4f', r: 0, isBoundary: true },
+];
+
+// === COMLINK MESSAGES ===
+const COMLINK_MSGS = [
+  { maxAU: 3,   msgs: ['Houston: Telemetry nominal. Godspeed, Voyager.', 'Houston: All systems green. You are GO for flyby.', 'Houston: Trajectory confirmed. Looking good.'] },
+  { maxAU: 10,  msgs: ['JPL: Signal strong. Entering gas giant territory.', 'JPL: Gravity assist window approaching.', 'JPL: Watch for debris fields ahead.'] },
+  { maxAU: 40,  msgs: ['JPL: Sig..l weakening. You are b..yond Neptune.', 'JPL: Da.a rate dropping. Stay on c..rse.', 'JPL: Kuiper Belt obj..ts detected nearby.'] },
+  { maxAU: 122, msgs: ['DSN: ...faint signal... heli...eath boundary...', 'DSN: ...termin...shock... crossing...', 'DSN: ...last ch..ck... pow..r levels...'] },
+  { maxAU: 9999, msgs: ['...', '. . . . .', '... no signal ...', '............'] },
+];
+
+// === AUDIO ===
+let audioCtx = null, bgOsc, bgOsc2, bgOsc3, bgNoiseGain, bgMaster;
+let bgmMuted = false, sfxMuted = false;
+let bgmGainNode = null, sfxGainNode = null;
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  // Master gain
+  bgMaster = audioCtx.createGain();
+  bgMaster.gain.value = 0.35;
+  bgMaster.connect(audioCtx.destination);
+
+  // Separate BGM and SFX gain nodes
+  bgmGainNode = audioCtx.createGain();
+  bgmGainNode.gain.value = bgmMuted ? 0 : 1;
+  bgmGainNode.connect(bgMaster);
+
+  sfxGainNode = audioCtx.createGain();
+  sfxGainNode.gain.value = sfxMuted ? 0 : 1;
+  sfxGainNode.connect(bgMaster);
+
+  // === Ambient drone: layered soft pads ===
+  bgOsc = audioCtx.createOscillator();
+  bgOsc.type = 'sine'; bgOsc.frequency.value = 40;
+  const g1 = audioCtx.createGain(); g1.gain.value = 0.06;
+  bgOsc.connect(g1); g1.connect(bgmGainNode); bgOsc.start();
+
+  bgOsc2 = audioCtx.createOscillator();
+  bgOsc2.type = 'sine'; bgOsc2.frequency.value = 60.1;
+  const g2 = audioCtx.createGain(); g2.gain.value = 0.03;
+  bgOsc2.connect(g2); g2.connect(bgmGainNode); bgOsc2.start();
+
+  bgOsc3 = audioCtx.createOscillator();
+  bgOsc3.type = 'sine'; bgOsc3.frequency.value = 320;
+  const g3 = audioCtx.createGain(); g3.gain.value = 0.008;
+  bgOsc3.connect(g3); g3.connect(bgmGainNode); bgOsc3.start();
+
+  // Filtered noise
+  const bufSize = audioCtx.sampleRate * 2;
+  const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = buf; noise.loop = true;
+  const lpf = audioCtx.createBiquadFilter();
+  lpf.type = 'lowpass'; lpf.frequency.value = 400; lpf.Q.value = 0.5;
+  bgNoiseGain = audioCtx.createGain();
+  bgNoiseGain.gain.value = 0.012;
+  noise.connect(lpf); lpf.connect(bgNoiseGain); bgNoiseGain.connect(bgmGainNode);
+  noise.start();
+}
+
+// Update BGM tone based on distance — drones shift lower, noise fades
+function updateBGM() {
+  if (!bgOsc) return;
+  const d = distance;
+  // Sub-bass slowly drops
+  bgOsc.frequency.value = Math.max(25, 40 - d * 0.02);
+  // Fifth layer drifts
+  bgOsc2.frequency.value = Math.max(37, 60.1 - d * 0.03);
+  // Shimmer fades away in deep space
+  bgOsc3.frequency.value = 320 - Math.min(100, d * 0.15);
+  // Noise gets quieter as you leave the heliosphere
+  bgNoiseGain.gain.value = Math.max(0.003, 0.012 - d * 0.00008);
+}
+
+// === SFX — all softened ===
+function playSfx(freq, type, vol, dur, freqEnd) {
+  if (!audioCtx || !sfxGainNode) return;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = type; o.frequency.value = freq; g.gain.value = vol;
+  o.connect(g); g.connect(sfxGainNode); o.start();
+  if (freqEnd) o.frequency.exponentialRampToValueAtTime(freqEnd, audioCtx.currentTime + dur * 0.7);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+  o.stop(audioCtx.currentTime + dur);
+}
+function playPickup() {
+  // Gentle chime — two soft sine tones
+  playSfx(800, 'sine', 0.06, 0.2);
+  setTimeout(() => playSfx(1100, 'sine', 0.04, 0.15), 60);
+}
+function playHit() {
+  // Muffled thud
+  playSfx(60, 'sine', 0.08, 0.25);
+  playSfx(120, 'triangle', 0.04, 0.15);
+}
+function playMilestone() {
+  // Soft ascending tone
+  playSfx(330, 'sine', 0.05, 0.6, 660);
+  setTimeout(() => playSfx(440, 'sine', 0.03, 0.4, 550), 150);
+}
+function playShield() {
+  playSfx(200, 'sine', 0.06, 0.35, 80);
+}
+function playCombo() {
+  playSfx(500, 'sine', 0.04, 0.12);
+  setTimeout(() => playSfx(650, 'sine', 0.04, 0.12), 50);
+  setTimeout(() => playSfx(800, 'sine', 0.03, 0.15), 100);
+}
+
+// === GAME STATE ===
+let power, distance, speed, baseSpeed, voyagerY, voyagerVY;
+let stars, planets, obstacles, items, solarWindParticles, shieldParticles;
+let running = false, keys = {}, mouseY = null, touchY = null;
+let lastTime = 0, powerTimer = 0, spawnTimer = 0, planetTimer = 0;
+let currentZoneName = '', milestoneIdx = 0, announceTimer = 0, milestoneTimer = 0;
+let earthX, earthY, earthScale, earthVisible, sunGlow;
+let milestonePlanets = [];
+// New mechanics
+let combo = 0, comboTimer = 0, comboBoost = 0;
+let shieldCooldown = 0, shieldActive = 0;
+let solarWindTimer = 0, solarWindActive = false, solarWindDir = 1;
+let comlinkTimer = 0, comlinkFade = 0;
+let screenShake = 0;
+let lowPowerFlash = 0;
+// Cosmic rays & alien ship
+let cosmicRays = [];
+let cosmicRayTimer = 0;
+let alienShip = null;
+let alienShipTimer = 0;
+let alienEncountered = false;
+let alienMsgTimer = 0;
+
+function initGame() {
+  power = 100; distance = 0; speed = 1; baseSpeed = 1;
+  voyagerY = H / 2; voyagerVY = 0;
+  stars = []; planets = []; obstacles = []; items = [];
+  solarWindParticles = []; shieldParticles = [];
+  milestonePlanets = [];
+  powerTimer = 0; spawnTimer = 0; planetTimer = 0;
+  currentZoneName = ''; milestoneIdx = 0; announceTimer = 0; milestoneTimer = 0;
+  earthX = W * 0.08; earthY = H / 2; earthScale = 1.0; earthVisible = true;
+  sunGlow = 1.0;
+  combo = 0; comboTimer = 0; comboBoost = 0;
+  shieldCooldown = 0; shieldActive = 0;
+  solarWindTimer = 8 + Math.random() * 5; solarWindActive = false;
+  comlinkTimer = 5 + Math.random() * 5; comlinkFade = 0;
+  screenShake = 0; lowPowerFlash = 0;
+  cosmicRays = []; cosmicRayTimer = 2 + Math.random() * 3;
+  alienShip = null; alienShipTimer = 10 + Math.random() * 10; alienEncountered = false; alienMsgTimer = 0;
+  zoneLabel.textContent = ''; zoneAnnounce.style.opacity = 0; milestoneEl.style.opacity = 0;
+  comboDisplay.style.opacity = 0; comlinkEl.style.opacity = 0;
+  lowPowerOv.style.opacity = 0;
+  for (let i = 0; i < 250; i++) {
+    stars.push({ x: Math.random() * W, y: Math.random() * H, s: Math.random() * 2 + 0.5, b: Math.random(), layer: Math.random(), visible: true });
+  }
+}
+
+// === DRAWING HELPERS ===
+function drawVoyager(x, y) {
+  ctx.save(); ctx.translate(x, y);
+
+  // Engine glow when boosting
+  if (comboBoost > 0 || speed > 2) {
+    const eg = ctx.createRadialGradient(-18, 0, 0, -18, 0, 12 + speed * 3);
+    eg.addColorStop(0, 'rgba(100,180,255,0.35)'); eg.addColorStop(1, 'rgba(100,180,255,0)');
+    ctx.fillStyle = eg; ctx.beginPath(); ctx.arc(-18, 0, 12 + speed * 3, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // === HIGH-GAIN ANTENNA (HGA) — large parabolic dish ===
+  // Dish face (pointing left/back toward Earth)
+  ctx.fillStyle = '#ddd';
+  ctx.beginPath();
+  ctx.ellipse(-6, 0, 4, 13, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Dish rim highlight
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.ellipse(-6, 0, 4, 13, 0, -Math.PI * 0.5, Math.PI * 0.5);
+  ctx.stroke();
+  // Dish shadow/depth
+  ctx.fillStyle = 'rgba(0,0,0,0.1)';
+  ctx.beginPath();
+  ctx.ellipse(-5, 0, 2.5, 11, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Feed horn (center of dish)
+  ctx.strokeStyle = '#aaa'; ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.moveTo(-6, 0); ctx.lineTo(-1, 0); ctx.stroke();
+  ctx.fillStyle = '#bbb';
+  ctx.beginPath(); ctx.arc(-1, 0, 1.2, 0, Math.PI * 2); ctx.fill();
+
+  // === BUS (10-sided main body) ===
+  ctx.fillStyle = '#a0a0a0';
+  ctx.fillRect(-2, -5, 12, 10);
+  // Bus shading
+  const busGrad = ctx.createLinearGradient(-2, -5, -2, 5);
+  busGrad.addColorStop(0, 'rgba(255,255,255,0.15)');
+  busGrad.addColorStop(0.5, 'rgba(0,0,0,0)');
+  busGrad.addColorStop(1, 'rgba(0,0,0,0.15)');
+  ctx.fillStyle = busGrad;
+  ctx.fillRect(-2, -5, 12, 10);
+  // Gold thermal blanket patches
+  ctx.fillStyle = 'rgba(200,170,60,0.3)';
+  ctx.fillRect(0, -4, 4, 3);
+  ctx.fillRect(5, 1, 4, 3);
+  // Bus outline
+  ctx.strokeStyle = '#888'; ctx.lineWidth = 0.5;
+  ctx.strokeRect(-2, -5, 12, 10);
+
+  // === SCIENCE BOOM (upper, angled up-right) ===
+  ctx.strokeStyle = '#999'; ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.moveTo(4, -5); ctx.lineTo(14, -20); ctx.stroke();
+  // Science instruments at tip (scan platform)
+  ctx.fillStyle = '#888';
+  ctx.fillRect(12, -23, 5, 6);
+  // Camera lenses
+  ctx.fillStyle = '#334';
+  ctx.beginPath(); ctx.arc(13.5, -21, 1.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(15.5, -21, 1, 0, Math.PI * 2); ctx.fill();
+  // UV spectrometer hint
+  ctx.fillStyle = '#777';
+  ctx.fillRect(12.5, -18, 4, 1.5);
+
+  // === MAGNETOMETER BOOM (long, extending right) ===
+  ctx.strokeStyle = '#aaa'; ctx.lineWidth = 0.6;
+  ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(28, -2); ctx.stroke();
+  // Magnetometer sensor at tip
+  ctx.fillStyle = '#bbb';
+  ctx.fillRect(26, -3.5, 3, 3);
+  ctx.fillStyle = '#999';
+  ctx.fillRect(27, -3, 1.5, 2);
+
+  // === RTG BOOM (lower, angled down-right) ===
+  ctx.strokeStyle = '#888'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(4, 5); ctx.lineTo(16, 18); ctx.stroke();
+  // RTG unit — cylindrical with fins
+  ctx.save(); ctx.translate(16, 18); ctx.rotate(0.7);
+  // RTG body
+  ctx.fillStyle = '#555';
+  ctx.fillRect(-2, -3, 10, 6);
+  // RTG fins (heat dissipation)
+  ctx.fillStyle = '#444';
+  for (let i = 0; i < 4; i++) {
+    ctx.fillRect(-1 + i * 2.8, -5, 1.5, 2);
+    ctx.fillRect(-1 + i * 2.8, 3, 1.5, 2);
+  }
+  // RTG glow (radioactive warmth)
+  ctx.fillStyle = 'rgba(255,120,40,0.08)';
+  ctx.beginPath(); ctx.arc(3, 0, 8, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
+  // === THRUSTERS (small nozzles on bus) ===
+  ctx.fillStyle = '#777';
+  ctx.fillRect(-3, -3, 1.5, 2);
+  ctx.fillRect(-3, 1, 1.5, 2);
+
+  // === LOW-GAIN ANTENNA (small, on top of dish strut) ===
+  ctx.strokeStyle = '#bbb'; ctx.lineWidth = 0.5;
+  ctx.beginPath(); ctx.moveTo(-4, -13); ctx.lineTo(-4, -17); ctx.stroke();
+  ctx.fillStyle = '#ccc';
+  ctx.beginPath(); ctx.arc(-4, -17, 1.5, 0, Math.PI * 2); ctx.fill();
+
+  // === RADIOISOTOPE HEATER UNITS (small dots on bus) ===
+  ctx.fillStyle = 'rgba(255,140,40,0.4)';
+  ctx.beginPath(); ctx.arc(2, 5.5, 1, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(7, 5.5, 1, 0, Math.PI * 2); ctx.fill();
+
+  // === Shield ring effect ===
+  if (shieldActive > 0) {
+    ctx.strokeStyle = `rgba(80,200,255,${shieldActive})`; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(5, 0, 30 + (1 - shieldActive) * 25, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawEarth(x, y, scale) {
+  if (scale < 0.01) return;
+  ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
+  const glow = ctx.createRadialGradient(0, 0, 8, 0, 0, 30);
+  glow.addColorStop(0, 'rgba(60,140,255,0.3)'); glow.addColorStop(1, 'rgba(60,140,255,0)');
+  ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0, 0, 30, 0, Math.PI * 2); ctx.fill();
+  const grad = ctx.createRadialGradient(-3, -3, 2, 0, 0, 14);
+  grad.addColorStop(0, '#6cf'); grad.addColorStop(0.5, '#28a'); grad.addColorStop(1, '#146');
+  ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(50,180,80,0.4)';
+  ctx.beginPath(); ctx.arc(-3, -2, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(4, 4, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(100,180,255,0.5)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+}
+
+function drawSun() {
+  if (sunGlow < 0.01) return;
+  ctx.save(); const sx = -20, sy = H / 2, r = 60 * sunGlow;
+  const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, r);
+  grad.addColorStop(0, `rgba(255,240,200,${0.6 * sunGlow})`);
+  grad.addColorStop(0.3, `rgba(255,200,100,${0.3 * sunGlow})`);
+  grad.addColorStop(1, 'rgba(255,200,100,0)');
+  ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function drawMilestonePlanet(p) {
+  ctx.save(); ctx.translate(p.x, p.y);
+  const r = p.r;
+  // Outer glow
+  ctx.globalAlpha = 0.25;
+  const gl = ctx.createRadialGradient(0, 0, r * 0.5, 0, 0, r * 2.2);
+  gl.addColorStop(0, p.color); gl.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(0, 0, r * 2.2, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1;
+  // Clip to planet circle for surface detail
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.clip();
+  // Per-planet surface
+  const n = p.name;
+  if (n === 'Mercury') { drawMercury(r); }
+  else if (n === 'Venus') { drawVenus(r); }
+  else if (n === 'Earth') { drawEarthDetail(r); }
+  else if (n === 'Mars') { drawMars(r); }
+  else if (n === 'Jupiter') { drawJupiter(r); }
+  else if (n === 'Saturn') { drawSaturnBody(r); }
+  else if (n === 'Uranus') { drawUranus(r); }
+  else if (n === 'Neptune') { drawNeptune(r); }
+  else if (n === 'Pluto') { drawPluto(r); }
+  else { // fallback
+    const grad = ctx.createRadialGradient(-r * 0.2, -r * 0.2, r * 0.1, 0, 0, r);
+    grad.addColorStop(0, p.color); grad.addColorStop(1, '#111');
+    ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+  // Saturn ring drawn OUTSIDE clip
+  if (n === 'Saturn') { drawSaturnRing(p.x, p.y, r); }
+  // Uranus ring
+  if (n === 'Uranus') { drawUranusRing(p.x, p.y, r); }
+  // Label
+  ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '11px Courier New'; ctx.textAlign = 'center';
+  ctx.fillText(p.name, p.x, p.y + r + 16);
+}
+
+// --- Mercury: grey, cratered ---
+function drawMercury(r) {
+  const g = ctx.createRadialGradient(-r * 0.25, -r * 0.25, r * 0.05, 0, 0, r);
+  g.addColorStop(0, '#bbb'); g.addColorStop(0.6, '#888'); g.addColorStop(1, '#333');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  // Craters
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  const craters = [[-3,-2,4],[4,3,3],[1,-5,2],[-5,4,2.5],[6,-3,1.5]];
+  for (const c of craters) { ctx.beginPath(); ctx.arc(c[0] * r / 12, c[1] * r / 12, c[2] * r / 12, 0, Math.PI * 2); ctx.fill(); }
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  for (const c of craters) { ctx.beginPath(); ctx.arc(c[0] * r / 12 - 0.5, c[1] * r / 12 - 0.5, c[2] * r / 14, 0, Math.PI * 2); ctx.fill(); }
+}
+
+// --- Venus: yellowish with thick cloud bands ---
+function drawVenus(r) {
+  const g = ctx.createRadialGradient(-r * 0.2, -r * 0.2, r * 0.05, 0, 0, r);
+  g.addColorStop(0, '#f0d890'); g.addColorStop(0.5, '#d4a850'); g.addColorStop(1, '#6a4a20');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  // Swirling cloud bands
+  for (let i = -3; i <= 3; i++) {
+    const y = i * r * 0.22;
+    ctx.strokeStyle = `rgba(255,230,180,${0.08 + Math.abs(i) * 0.02})`;
+    ctx.lineWidth = r * 0.12;
+    ctx.beginPath();
+    ctx.moveTo(-r, y); ctx.quadraticCurveTo(-r * 0.3, y + r * 0.08 * (i % 2 ? 1 : -1), 0, y);
+    ctx.quadraticCurveTo(r * 0.3, y - r * 0.06 * (i % 2 ? 1 : -1), r, y);
+    ctx.stroke();
+  }
+}
+
+// --- Earth: blue ocean, green/brown continents, clouds, atmosphere ---
+function drawEarthDetail(r) {
+  // Ocean
+  const g = ctx.createRadialGradient(-r * 0.2, -r * 0.2, r * 0.05, 0, 0, r);
+  g.addColorStop(0, '#5599dd'); g.addColorStop(0.5, '#2266aa'); g.addColorStop(1, '#0a2244');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  // Continents
+  ctx.fillStyle = '#3a8040';
+  // Americas-ish
+  ctx.beginPath(); ctx.ellipse(-r * 0.35, -r * 0.1, r * 0.22, r * 0.35, 0.2, 0, Math.PI * 2); ctx.fill();
+  // Africa/Europe-ish
+  ctx.fillStyle = '#4a9050';
+  ctx.beginPath(); ctx.ellipse(r * 0.2, -r * 0.15, r * 0.18, r * 0.3, -0.1, 0, Math.PI * 2); ctx.fill();
+  // Asia-ish
+  ctx.fillStyle = '#3a7838';
+  ctx.beginPath(); ctx.ellipse(r * 0.45, -r * 0.05, r * 0.15, r * 0.25, 0.3, 0, Math.PI * 2); ctx.fill();
+  // Ice caps
+  ctx.fillStyle = 'rgba(230,240,255,0.5)';
+  ctx.beginPath(); ctx.ellipse(0, -r * 0.85, r * 0.4, r * 0.12, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, r * 0.88, r * 0.35, r * 0.1, 0, 0, Math.PI * 2); ctx.fill();
+  // Cloud wisps
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = r * 0.06;
+  ctx.beginPath(); ctx.arc(r * 0.1, -r * 0.3, r * 0.4, 0.5, 2.0); ctx.stroke();
+  ctx.beginPath(); ctx.arc(-r * 0.2, r * 0.25, r * 0.35, -0.5, 1.2); ctx.stroke();
+  // Atmosphere rim
+  ctx.strokeStyle = 'rgba(100,180,255,0.35)'; ctx.lineWidth = r * 0.08;
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.97, 0, Math.PI * 2); ctx.stroke();
+}
+
+// --- Mars: red/orange, dark patches, polar cap ---
+function drawMars(r) {
+  const g = ctx.createRadialGradient(-r * 0.2, -r * 0.2, r * 0.05, 0, 0, r);
+  g.addColorStop(0, '#e08040'); g.addColorStop(0.5, '#c05030'); g.addColorStop(1, '#401510');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  // Dark regions (Syrtis Major etc)
+  ctx.fillStyle = 'rgba(60,20,10,0.3)';
+  ctx.beginPath(); ctx.ellipse(r * 0.15, r * 0.1, r * 0.3, r * 0.2, 0.4, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-r * 0.3, -r * 0.2, r * 0.2, r * 0.15, -0.3, 0, Math.PI * 2); ctx.fill();
+  // Valles Marineris hint
+  ctx.strokeStyle = 'rgba(80,30,15,0.4)'; ctx.lineWidth = r * 0.04;
+  ctx.beginPath(); ctx.moveTo(-r * 0.5, r * 0.05); ctx.quadraticCurveTo(0, -r * 0.05, r * 0.4, r * 0.1); ctx.stroke();
+  // Polar ice cap
+  ctx.fillStyle = 'rgba(230,220,210,0.6)';
+  ctx.beginPath(); ctx.ellipse(0, -r * 0.82, r * 0.3, r * 0.12, 0, 0, Math.PI * 2); ctx.fill();
+}
+
+// --- Jupiter: banded, Great Red Spot ---
+function drawJupiter(r) {
+  const g = ctx.createRadialGradient(-r * 0.15, -r * 0.15, r * 0.05, 0, 0, r);
+  g.addColorStop(0, '#e8c880'); g.addColorStop(0.5, '#c8a050'); g.addColorStop(1, '#3a2810');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  // Horizontal bands
+  const bands = [
+    { y: -0.7, h: 0.12, c: 'rgba(180,140,90,0.4)' },
+    { y: -0.45, h: 0.14, c: 'rgba(200,160,100,0.3)' },
+    { y: -0.2, h: 0.10, c: 'rgba(160,110,60,0.45)' },
+    { y: 0.0,  h: 0.13, c: 'rgba(190,150,90,0.3)' },
+    { y: 0.2,  h: 0.11, c: 'rgba(170,120,70,0.4)' },
+    { y: 0.45, h: 0.14, c: 'rgba(200,160,100,0.3)' },
+    { y: 0.7,  h: 0.10, c: 'rgba(160,110,60,0.35)' },
+  ];
+  for (const b of bands) {
+    ctx.fillStyle = b.c;
+    ctx.fillRect(-r, b.y * r, r * 2, b.h * r);
+  }
+  // Turbulence at band edges
+  for (const b of bands) {
+    ctx.strokeStyle = 'rgba(140,100,50,0.15)'; ctx.lineWidth = r * 0.03;
+    ctx.beginPath();
+    for (let x = -r; x < r; x += r * 0.1) {
+      ctx.lineTo(x, b.y * r + Math.sin(x * 0.15) * r * 0.03);
+    }
+    ctx.stroke();
+  }
+  // Great Red Spot
+  ctx.save();
+  ctx.translate(r * 0.25, r * 0.22);
+  const grs = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.18);
+  grs.addColorStop(0, 'rgba(200,80,50,0.7)'); grs.addColorStop(0.6, 'rgba(180,70,40,0.4)'); grs.addColorStop(1, 'rgba(180,70,40,0)');
+  ctx.fillStyle = grs;
+  ctx.beginPath(); ctx.ellipse(0, 0, r * 0.18, r * 0.11, 0.1, 0, Math.PI * 2); ctx.fill();
+  // Swirl inside GRS
+  ctx.strokeStyle = 'rgba(220,100,60,0.3)'; ctx.lineWidth = r * 0.02;
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.1, 0, Math.PI * 1.5); ctx.stroke();
+  ctx.restore();
+}
+
+// --- Saturn body (ring drawn separately outside clip) ---
+function drawSaturnBody(r) {
+  const g = ctx.createRadialGradient(-r * 0.15, -r * 0.15, r * 0.05, 0, 0, r);
+  g.addColorStop(0, '#f0d890'); g.addColorStop(0.5, '#d4b060'); g.addColorStop(1, '#4a3010');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  // Subtle bands
+  const bands = [-0.5, -0.2, 0.1, 0.35, 0.6];
+  for (const y of bands) {
+    ctx.fillStyle = 'rgba(210,180,120,0.15)';
+    ctx.fillRect(-r, y * r, r * 2, r * 0.1);
+  }
+  // Polar darkening
+  ctx.fillStyle = 'rgba(100,80,40,0.2)';
+  ctx.beginPath(); ctx.ellipse(0, -r * 0.8, r * 0.5, r * 0.15, 0, 0, Math.PI * 2); ctx.fill();
+}
+function drawSaturnRing(px, py, r) {
+  ctx.save(); ctx.translate(px, py);
+  // Multiple ring bands with gaps
+  const rings = [
+    { inner: 1.3, outer: 1.5, c: 'rgba(200,180,140,0.5)' },  // C ring
+    { inner: 1.55, outer: 1.85, c: 'rgba(220,200,160,0.6)' }, // B ring
+    { inner: 1.9, outer: 1.92, c: 'rgba(0,0,0,0.8)' },       // Cassini Division
+    { inner: 1.95, outer: 2.2, c: 'rgba(190,170,130,0.45)' }, // A ring
+  ];
+  for (const ring of rings) {
+    ctx.strokeStyle = ring.c;
+    ctx.lineWidth = (ring.outer - ring.inner) * r;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, ((ring.inner + ring.outer) / 2) * r, ((ring.inner + ring.outer) / 2) * r * 0.25, -0.15, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// --- Uranus: pale cyan, tilted, subtle bands ---
+function drawUranus(r) {
+  const g = ctx.createRadialGradient(-r * 0.15, -r * 0.15, r * 0.05, 0, 0, r);
+  g.addColorStop(0, '#b0e8e8'); g.addColorStop(0.5, '#70b8c8'); g.addColorStop(1, '#1a3a40');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  // Very subtle bands
+  ctx.fillStyle = 'rgba(140,210,210,0.1)';
+  ctx.fillRect(-r, -r * 0.15, r * 2, r * 0.1);
+  ctx.fillRect(-r, r * 0.2, r * 2, r * 0.08);
+  // Slight polar brightening
+  ctx.fillStyle = 'rgba(180,230,230,0.15)';
+  ctx.beginPath(); ctx.ellipse(0, -r * 0.7, r * 0.35, r * 0.15, 0, 0, Math.PI * 2); ctx.fill();
+}
+function drawUranusRing(px, py, r) {
+  ctx.save(); ctx.translate(px, py);
+  // Uranus has thin dark rings, nearly vertical due to axial tilt
+  ctx.strokeStyle = 'rgba(100,140,150,0.25)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.ellipse(0, 0, r * 1.5, r * 1.5 * 0.9, 1.3, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = 'rgba(100,140,150,0.15)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.ellipse(0, 0, r * 1.65, r * 1.65 * 0.9, 1.3, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+}
+
+// --- Neptune: deep blue, dark spot, streaky clouds ---
+function drawNeptune(r) {
+  const g = ctx.createRadialGradient(-r * 0.15, -r * 0.15, r * 0.05, 0, 0, r);
+  g.addColorStop(0, '#5080e0'); g.addColorStop(0.5, '#3050a0'); g.addColorStop(1, '#0a1030');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  // Bands
+  ctx.fillStyle = 'rgba(60,100,180,0.2)';
+  ctx.fillRect(-r, -r * 0.3, r * 2, r * 0.12);
+  ctx.fillRect(-r, r * 0.15, r * 2, r * 0.1);
+  // Great Dark Spot
+  ctx.save(); ctx.translate(-r * 0.15, -r * 0.15);
+  const ds = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.16);
+  ds.addColorStop(0, 'rgba(15,25,60,0.6)'); ds.addColorStop(1, 'rgba(15,25,60,0)');
+  ctx.fillStyle = ds;
+  ctx.beginPath(); ctx.ellipse(0, 0, r * 0.16, r * 0.1, 0.2, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  // White streaky clouds
+  ctx.strokeStyle = 'rgba(180,200,255,0.25)'; ctx.lineWidth = r * 0.04;
+  ctx.beginPath(); ctx.arc(r * 0.1, r * 0.3, r * 0.3, 0.3, 1.5); ctx.stroke();
+  ctx.beginPath(); ctx.arc(-r * 0.2, -r * 0.4, r * 0.25, -0.5, 0.8); ctx.stroke();
+}
+
+// --- Pluto: small, beige/brown, heart shape ---
+function drawPluto(r) {
+  const g = ctx.createRadialGradient(-r * 0.2, -r * 0.2, r * 0.05, 0, 0, r);
+  g.addColorStop(0, '#c8b898'); g.addColorStop(0.5, '#a08868'); g.addColorStop(1, '#302018');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  // Tombaugh Regio (heart-shaped bright region)
+  ctx.fillStyle = 'rgba(220,210,190,0.35)';
+  ctx.beginPath();
+  const hr = r * 0.4;
+  ctx.moveTo(0, hr * 0.3);
+  ctx.bezierCurveTo(-hr, -hr * 0.5, -hr * 0.3, -hr, 0, -hr * 0.4);
+  ctx.bezierCurveTo(hr * 0.3, -hr, hr, -hr * 0.5, 0, hr * 0.3);
+  ctx.fill();
+  // Dark equatorial patches
+  ctx.fillStyle = 'rgba(50,30,20,0.2)';
+  ctx.beginPath(); ctx.ellipse(-r * 0.3, r * 0.3, r * 0.2, r * 0.1, 0.3, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawRandomPlanet(p) {
+  const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
+  grad.addColorStop(0, p.color); grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = p.color; ctx.globalAlpha = 0.3; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(p.x, p.y, p.r + 4, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
+}
+
+function drawObstacle(o) {
+  ctx.fillStyle = o.fast ? '#955' : '#666'; ctx.save(); ctx.translate(o.x, o.y); ctx.rotate(o.rot);
+  ctx.beginPath(); const pts = o.shape;
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+
+function drawItem(it) {
+  ctx.save(); ctx.translate(it.x, it.y); ctx.rotate(it.rot);
+  ctx.fillStyle = '#da2'; ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fc0'; ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#da2'; ctx.beginPath(); ctx.arc(0, 0, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 0.2 + Math.sin(Date.now() * 0.005) * 0.1;
+  ctx.strokeStyle = '#fc0'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.stroke();
+  ctx.globalAlpha = 1; ctx.restore();
+}
+
+function makeAsteroidShape() {
+  const pts = [], n = 6 + Math.floor(Math.random() * 4);
+  for (let i = 0; i < n; i++) { const a = (Math.PI * 2 / n) * i, r = 8 + Math.random() * 10; pts.push([Math.cos(a) * r, Math.sin(a) * r]); }
+  return pts;
+}
+const rndPlanetColors = ['#e44','#4ae','#ea4','#4ea','#a4e','#e84'];
+
+// === MILESTONE & ANNOUNCEMENTS ===
+function checkMilestones() {
+  while (milestoneIdx < MILESTONES.length && distance >= MILESTONES[milestoneIdx].au) {
+    const m = MILESTONES[milestoneIdx];
+    if (m.isBoundary) { showMilestone('>> ' + m.name + ' <<'); playMilestone(); }
+    else {
+      milestonePlanets.push({ x: W + m.r + 40, y: H * 0.2 + Math.random() * H * 0.6, r: m.r, color: m.color, name: m.name, hasRing: m.hasRing || false });
+      showMilestone('Passing ' + m.name + ' — ' + m.au + ' AU');
+      playMilestone();
+    }
+    milestoneIdx++;
+  }
+}
+function showMilestone(t) { milestoneEl.textContent = t; milestoneEl.style.opacity = 1; milestoneTimer = 2.5; }
+function showZoneAnnounce(n) { zoneAnnounce.textContent = '— ' + n + ' —'; zoneAnnounce.style.opacity = 1; announceTimer = 2.5; }
+
+function showComlink() {
+  const group = COMLINK_MSGS.find(g => distance < g.maxAU) || COMLINK_MSGS[COMLINK_MSGS.length - 1];
+  const msg = group.msgs[Math.floor(Math.random() * group.msgs.length)];
+  comlinkEl.textContent = '📡 ' + msg;
+  comlinkEl.style.opacity = 1;
+  comlinkFade = 3.5;
+}
+
+// === SHIELD BURST ===
+function activateShield() {
+  if (shieldCooldown > 0 || power < 20) return;
+  power -= 15;
+  shieldActive = 1.0;
+  shieldCooldown = 4.5;
+  playShield();
+  // Push away nearby obstacles
+  const vx = W * 0.15;
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    const o = obstacles[i];
+    const dx = o.x - vx, dy = o.y - voyagerY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 80) {
+      // Spawn particles
+      for (let j = 0; j < 4; j++) {
+        shieldParticles.push({ x: o.x, y: o.y, vx: (Math.random() - 0.5) * 200, vy: (Math.random() - 0.5) * 200, life: 0.5 });
+      }
+      obstacles.splice(i, 1);
+    }
+  }
+}
+
+// === UPDATE ===
+function update(dt) {
+  if (!running) return;
+  const voyagerX = W * 0.15;
+  const zone = getZone(distance);
+
+  // Zone change
+  if (zone.name !== currentZoneName) { currentZoneName = zone.name; zoneLabel.textContent = zone.name; showZoneAnnounce(zone.name); }
+
+  // Timers
+  if (announceTimer > 0) { announceTimer -= dt; if (announceTimer <= 0) zoneAnnounce.style.opacity = 0; }
+  if (milestoneTimer > 0) { milestoneTimer -= dt; if (milestoneTimer <= 0) milestoneEl.style.opacity = 0; }
+  if (comlinkFade > 0) { comlinkFade -= dt; if (comlinkFade <= 0) comlinkEl.style.opacity = 0; }
+  if (comboTimer > 0) { comboTimer -= dt; if (comboTimer <= 0) { combo = 0; comboDisplay.style.opacity = 0; } }
+  if (shieldCooldown > 0) shieldCooldown -= dt;
+  if (shieldActive > 0) shieldActive = Math.max(0, shieldActive - dt * 2.5);
+  if (comboBoost > 0) comboBoost = Math.max(0, comboBoost - dt);
+  if (screenShake > 0) screenShake = Math.max(0, screenShake - dt * 4);
+
+  // Shield display
+  shieldDisplay.textContent = shieldCooldown > 0 ? `SHIELD  ${shieldCooldown.toFixed(1)}s` : 'SHIELD  READY ▸ SPACE';
+  shieldDisplay.className = shieldCooldown > 0 ? '' : 'ready';
+
+  // Comlink messages
+  comlinkTimer -= dt;
+  if (comlinkTimer <= 0) { showComlink(); comlinkTimer = 8 + Math.random() * 7; }
+
+  // === POWER DRAIN — faster pace, escalates with distance ===
+  powerTimer += dt;
+  const drainRate = 1.5 + distance * 0.002; // aggressive drain, escalates fast
+  if (powerTimer >= 1) { powerTimer -= 1; power -= drainRate; }
+
+  // Input
+  let targetVY = 0;
+  if (keys['ArrowUp'] || keys['w']) targetVY = -300;
+  if (keys['ArrowDown'] || keys['s']) targetVY = 300;
+  if (mouseY !== null) { const diff = mouseY - voyagerY; targetVY = Math.max(-320, Math.min(320, diff * 3.5)); }
+  if (touchY !== null) { const diff = touchY - voyagerY; targetVY = Math.max(-320, Math.min(320, diff * 3.5)); }
+  voyagerVY += (targetVY - voyagerVY) * Math.min(1, dt * 5);
+  voyagerY += voyagerVY * dt;
+  voyagerY = Math.max(20, Math.min(H - 20, voyagerY));
+
+  // Speed — faster base progression + combo boost
+  baseSpeed = 1 + distance * 0.003;
+  speed += (baseSpeed + comboBoost * 2 - speed) * dt * 0.8;
+
+  // Earth departure
+  if (earthVisible) { earthX -= speed * 40 * dt; earthScale *= (1 - dt * 0.5); if (earthScale < 0.02 || earthX < -50) earthVisible = false; }
+  sunGlow = Math.max(0, 1 - distance * 0.08);
+
+  // Gravity assist
+  const applyGravity = (list) => {
+    for (const p of list) {
+      if (!p.r) continue;
+      const dx = p.x - voyagerX, dy = p.y - voyagerY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < p.r * 4) {
+        const force = (p.r * 200) / (dist * dist + 100);
+        voyagerVY += (dy / dist) * force * dt * 60;
+        if (dist < p.r * 2.5) speed = Math.min(8, speed + dt * 4);
+      }
+    }
+  };
+  applyGravity(planets);
+  applyGravity(milestonePlanets);
+
+  // === DISTANCE — faster progression ===
+  distance += speed * 0.25 * dt;
+
+  checkMilestones();
+
+  // === SOLAR WIND ===
+  solarWindTimer -= dt;
+  if (solarWindTimer <= 0 && !solarWindActive) {
+    solarWindActive = true;
+    solarWindDir = Math.random() < 0.5 ? -1 : 1; // push up or down
+    solarWindTimer = 3 + Math.random() * 2; // duration
+    // Spawn particles
+    for (let i = 0; i < 30; i++) {
+      solarWindParticles.push({
+        x: W + Math.random() * 200, y: Math.random() * H,
+        vx: -(200 + Math.random() * 150), vy: solarWindDir * (30 + Math.random() * 40),
+        life: 3 + Math.random() * 2
+      });
+    }
+  }
+  if (solarWindActive) {
+    solarWindTimer -= dt;
+    // Push voyager
+    voyagerVY += solarWindDir * 80 * dt;
+    // Boost speed if going with wind
+    speed = Math.min(8, speed + dt * 0.5);
+    if (solarWindTimer <= 0) { solarWindActive = false; solarWindTimer = 10 + Math.random() * 8; }
+  }
+  // Update wind particles
+  for (let i = solarWindParticles.length - 1; i >= 0; i--) {
+    const p = solarWindParticles[i];
+    p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt;
+    if (p.life <= 0 || p.x < -10) solarWindParticles.splice(i, 1);
+  }
+
+  // === COSMIC RAYS ===
+  cosmicRayTimer -= dt;
+  if (cosmicRayTimer <= 0) {
+    // More frequent in deep space
+    const freq = distance < 30 ? 0.08 : distance < 122 ? 0.2 : 0.4;
+    if (Math.random() < freq) {
+      const fromTop = Math.random() < 0.5;
+      cosmicRays.push({
+        x: Math.random() * W,
+        y: fromTop ? -10 : H + 10,
+        angle: (Math.random() - 0.5) * 0.8 + (fromTop ? Math.PI * 0.5 : -Math.PI * 0.5),
+        speed: 800 + Math.random() * 600,
+        life: 0.8 + Math.random() * 0.4,
+        color: Math.random() < 0.3 ? '#f4f' : Math.random() < 0.5 ? '#4ff' : '#ff4'
+      });
+    }
+    cosmicRayTimer = 0.5 + Math.random() * 1.5;
+  }
+  for (let i = cosmicRays.length - 1; i >= 0; i--) {
+    const cr = cosmicRays[i];
+    cr.x += Math.cos(cr.angle) * cr.speed * dt;
+    cr.y += Math.sin(cr.angle) * cr.speed * dt;
+    cr.life -= dt;
+    if (cr.life <= 0 || cr.x < -20 || cr.x > W + 20 || cr.y < -20 || cr.y > H + 20) {
+      cosmicRays.splice(i, 1); continue;
+    }
+    // Collision with voyager
+    const dx = cr.x - voyagerX, dy = cr.y - voyagerY;
+    if (Math.sqrt(dx * dx + dy * dy) < 22) {
+      power -= 8;
+      screenShake = 0.2;
+      playSfx(2000, 'sine', 0.04, 0.1);
+      cosmicRays.splice(i, 1);
+    }
+  }
+
+  // === ALIEN SHIP ===
+  if (!alienShip && distance > 40) {
+    alienShipTimer -= dt;
+    if (alienShipTimer <= 0) {
+      alienShip = {
+        x: W + 60,
+        y: H * 0.2 + Math.random() * H * 0.6,
+        phase: 0,
+        collected: false
+      };
+      alienShipTimer = 20 + Math.random() * 15;
+    }
+  }
+  if (alienShip) {
+    alienShip.x -= speed * 50 * dt;
+    alienShip.phase += dt * 3;
+    alienShip.y += Math.sin(alienShip.phase) * 30 * dt;
+    // Collision
+    if (!alienShip.collected) {
+      const dx = alienShip.x - voyagerX, dy = alienShip.y - voyagerY;
+      if (Math.sqrt(dx * dx + dy * dy) < 35) {
+        alienShip.collected = true;
+        alienEncountered = true;
+        power = Math.min(100, power + 40);
+        speed = Math.min(8, speed + 2);
+        comboBoost = 3;
+        screenShake = 0.15;
+        // Special sound
+        playSfx(400, 'sine', 0.06, 0.8, 800);
+        setTimeout(() => playSfx(600, 'sine', 0.04, 0.6, 1200), 200);
+        // Show message
+        showMilestone('👽 未知の知性体がゴールデンレコードに応答した');
+        comlinkEl.textContent = '📡 ???: ...we received your message...';
+        comlinkEl.style.opacity = 1;
+        comlinkFade = 5;
+      }
+    }
+    if (alienShip.x < -80) alienShip = null;
+  }
+
+  // Alien message timer
+  if (alienMsgTimer > 0) { alienMsgTimer -= dt; }
+
+  // Stars
+  for (const s of stars) {
+    s.x -= speed * 60 * s.s * (0.3 + s.layer * 0.7) * dt;
+    if (s.x < 0) { s.x = W + Math.random() * 20; s.y = Math.random() * H; s.visible = Math.random() < zone.starDen; }
+  }
+
+  // Spawn obstacles — escalating
+  spawnTimer += dt;
+  const spawnInterval = Math.max(0.15, 0.5 / speed);
+  if (spawnTimer > spawnInterval) {
+    spawnTimer = 0;
+    const obProb = distance < 40 ? 0.7 : distance < 122 ? 0.8 : 0.5;
+    if (Math.random() < obProb) {
+      obstacles.push({ x: W + 20, y: Math.random() * H, rot: Math.random() * Math.PI * 2, rotV: (Math.random() - 0.5) * 3, shape: makeAsteroidShape() });
+    }
+    // Occasional fast asteroid
+    if (distance > 10 && Math.random() < 0.15) {
+      obstacles.push({ x: W + 20, y: Math.random() * H, rot: Math.random() * Math.PI * 2, rotV: (Math.random() - 0.5) * 5, shape: makeAsteroidShape(), fast: true });
+    }
+    const itProb = distance < 40 ? 0.2 : distance < 122 ? 0.14 : 0.08;
+    if (Math.random() < itProb) {
+      items.push({ x: W + 20, y: Math.random() * H, rot: 0, rotV: 1 });
+    }
+  }
+
+  // Random planets
+  if (distance < 122) {
+    planetTimer += dt;
+    if (planetTimer > 3 + Math.random() * 2) {
+      planetTimer = 0;
+      const r = 25 + Math.random() * 40;
+      planets.push({ x: W + r + 20, y: 60 + Math.random() * (H - 120), r, color: rndPlanetColors[Math.floor(Math.random() * rndPlanetColors.length)] });
+    }
+  }
+
+  // Move & collide
+  const moveSpeed = speed * 150;
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    const o = obstacles[i];
+    const oSpeed = o.fast ? moveSpeed * 1.6 : moveSpeed;
+    o.x -= oSpeed * dt; o.rot += o.rotV * dt;
+    if (o.x < -30) { obstacles.splice(i, 1); continue; }
+    const dx = o.x - voyagerX, dy = o.y - voyagerY;
+    if (Math.sqrt(dx * dx + dy * dy) < 18) {
+      power -= 25; playHit(); screenShake = 0.3;
+      combo = 0; comboTimer = 0; comboDisplay.style.opacity = 0;
+      obstacles.splice(i, 1);
+    }
+  }
+  for (let i = items.length - 1; i >= 0; i--) {
+    const it = items[i]; it.x -= moveSpeed * dt; it.rot += it.rotV * dt;
+    if (it.x < -20) { items.splice(i, 1); continue; }
+    const dx = it.x - voyagerX, dy = it.y - voyagerY;
+    if (Math.sqrt(dx * dx + dy * dy) < 20) {
+      // Combo system
+      combo++;
+      comboTimer = 2.5;
+      const bonus = combo >= 3 ? 3 * combo : 0;
+      power = Math.min(100, power + 10 + bonus);
+      if (combo >= 3) { comboBoost = 2; playCombo(); comboDisplay.textContent = `COMBO x${combo}! +${10 + bonus}`; }
+      else { comboDisplay.textContent = `x${combo}`; }
+      comboDisplay.style.opacity = 1;
+      playPickup();
+      items.splice(i, 1);
+    }
+  }
+  for (let i = planets.length - 1; i >= 0; i--) { planets[i].x -= moveSpeed * 0.4 * dt; if (planets[i].x < -60) planets.splice(i, 1); }
+  for (let i = milestonePlanets.length - 1; i >= 0; i--) { milestonePlanets[i].x -= moveSpeed * 0.35 * dt; if (milestonePlanets[i].x < -100) milestonePlanets.splice(i, 1); }
+
+  // Shield particles
+  for (let i = shieldParticles.length - 1; i >= 0; i--) {
+    const p = shieldParticles[i]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt;
+    if (p.life <= 0) shieldParticles.splice(i, 1);
+  }
+
+  // Legend fades out after early game
+  document.getElementById('legend').style.opacity = distance < 3 ? 0.6 : Math.max(0, 0.6 - (distance - 3) * 0.15);
+
+  // Glitch
+  const glitchAmount = Math.min(0.6, distance * 0.004);
+  glitch.style.opacity = glitchAmount;
+  glitch.style.background = Math.random() < 0.1 && distance > 50
+    ? `repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0px, transparent ${1 + Math.random() * 3}px, transparent ${3 + Math.random() * 5}px)`
+    : 'repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, transparent 2px, transparent 4px)';
+
+  // Low power warning
+  if (power < 25) {
+    lowPowerFlash += dt * 6;
+    lowPowerOv.style.opacity = 0.15 + Math.sin(lowPowerFlash) * 0.15;
+    lowPowerOv.style.border = '3px solid rgba(255,50,50,0.4)';
+    lowPowerOv.style.boxShadow = 'inset 0 0 60px rgba(255,0,0,0.15)';
+  } else { lowPowerOv.style.opacity = 0; lowPowerFlash = 0; }
+
+  // BGM
+  updateBGM();
+
+  // UI
+  power = Math.max(0, power);
+  powerVal.textContent = Math.ceil(power);
+  powerFill.style.width = power + '%';
+  powerFill.style.background = power < 25
+    ? 'linear-gradient(90deg, #ef4444, #f87171)'
+    : power < 50
+    ? 'linear-gradient(90deg, #f59e0b, #fbbf24)'
+    : 'linear-gradient(90deg, #a855f7, #ec4899)';
+  powerFill.style.boxShadow = power < 25
+    ? '0 0 12px rgba(239,68,68,0.5)'
+    : power < 50
+    ? '0 0 10px rgba(245,158,11,0.4)'
+    : '0 0 12px rgba(168,85,247,0.5)';
+  distVal.textContent = distance.toFixed(2);
+  speedVal.textContent = speed.toFixed(1);
+
+  if (power <= 0) { running = false; showGameOver(); }
+}
+
+// === DRAW ===
+function draw() {
+  const zone = getZone(distance);
+  ctx.save();
+  // Screen shake
+  if (screenShake > 0) ctx.translate((Math.random() - 0.5) * screenShake * 12, (Math.random() - 0.5) * screenShake * 12);
+
+  ctx.fillStyle = `rgb(${zone.bg[0]},${zone.bg[1]},${zone.bg[2]})`;
+  ctx.fillRect(0, 0, W, H);
+  drawSun();
+
+  // Stars
+  for (const s of stars) {
+    if (!s.visible) continue;
+    const a = (0.3 + s.b * 0.7) * zone.starBri;
+    if (a < 0.02) continue;
+    ctx.fillStyle = `rgba(255,255,255,${a})`;
+    ctx.fillRect(s.x, s.y, s.s > 1.2 ? 2 : 1, s.s > 1.2 ? 2 : 1);
+  }
+
+  // Galaxy smudge
+  if (distance > 200) {
+    ctx.globalAlpha = Math.min(0.15, (distance - 200) * 0.0005);
+    const gx = W * 0.7, gy = H * 0.3;
+    const gg = ctx.createRadialGradient(gx, gy, 0, gx, gy, 80);
+    gg.addColorStop(0, 'rgba(180,160,220,0.3)'); gg.addColorStop(1, 'rgba(180,160,220,0)');
+    ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(gx, gy, 80, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // Solar wind particles
+  if (solarWindParticles.length > 0) {
+    for (const p of solarWindParticles) {
+      ctx.globalAlpha = Math.min(0.5, p.life * 0.3);
+      ctx.strokeStyle = solarWindDir > 0 ? '#f84' : '#48f';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + p.vx * 0.03, p.y + p.vy * 0.03); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    // Wind indicator
+    ctx.fillStyle = solarWindDir > 0 ? 'rgba(255,136,68,0.15)' : 'rgba(68,136,255,0.15)';
+    ctx.font = '12px Courier New'; ctx.textAlign = 'right';
+    ctx.fillText(solarWindActive ? '◈ SOLAR WIND' : '', W - 20, H - 20);
+  }
+
+  for (const p of planets) drawRandomPlanet(p);
+  for (const p of milestonePlanets) drawMilestonePlanet(p);
+  if (earthVisible) drawEarth(earthX, earthY, earthScale);
+  for (const it of items) drawItem(it);
+  for (const o of obstacles) drawObstacle(o);
+
+  // Shield particles
+  for (const p of shieldParticles) {
+    ctx.globalAlpha = p.life * 2;
+    ctx.fillStyle = '#4df';
+    ctx.fillRect(p.x, p.y, 3, 3);
+  }
+  ctx.globalAlpha = 1;
+
+  // Cosmic rays
+  for (const cr of cosmicRays) {
+    ctx.globalAlpha = Math.min(1, cr.life * 2);
+    ctx.strokeStyle = cr.color; ctx.lineWidth = 1.5;
+    ctx.shadowColor = cr.color; ctx.shadowBlur = 6;
+    const tailLen = cr.speed * 0.04;
+    ctx.beginPath();
+    ctx.moveTo(cr.x, cr.y);
+    ctx.lineTo(cr.x - Math.cos(cr.angle) * tailLen, cr.y - Math.sin(cr.angle) * tailLen);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    // Bright head
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(cr.x, cr.y, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // Alien ship
+  if (alienShip) {
+    ctx.save(); ctx.translate(alienShip.x, alienShip.y);
+    const pulse = 0.7 + Math.sin(alienShip.phase * 2) * 0.3;
+    // Glow field
+    ctx.globalAlpha = 0.15 * pulse;
+    const ag = ctx.createRadialGradient(0, 0, 0, 0, 0, 35);
+    ag.addColorStop(0, '#4f8'); ag.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = ag; ctx.beginPath(); ctx.arc(0, 0, 35, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+    // Saucer body
+    ctx.fillStyle = `rgba(80,220,160,${0.6 * pulse})`;
+    ctx.beginPath(); ctx.ellipse(0, 0, 18, 7, 0, 0, Math.PI * 2); ctx.fill();
+    // Dome
+    ctx.fillStyle = `rgba(120,255,200,${0.5 * pulse})`;
+    ctx.beginPath(); ctx.ellipse(0, -4, 8, 6, 0, Math.PI, Math.PI * 2); ctx.fill();
+    // Dome window
+    ctx.fillStyle = `rgba(200,255,230,${0.7 * pulse})`;
+    ctx.beginPath(); ctx.arc(0, -6, 3, 0, Math.PI * 2); ctx.fill();
+    // Bottom lights
+    const lightColors = ['#f4f', '#4ff', '#ff4', '#4f4'];
+    for (let i = 0; i < 4; i++) {
+      const lx = -9 + i * 6;
+      ctx.fillStyle = lightColors[i];
+      ctx.globalAlpha = 0.4 + Math.sin(alienShip.phase * 4 + i * 1.5) * 0.4;
+      ctx.beginPath(); ctx.arc(lx, 3, 1.5, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    // Beam (if not yet collected)
+    if (!alienShip.collected) {
+      ctx.globalAlpha = 0.06 + Math.sin(alienShip.phase * 3) * 0.04;
+      ctx.fillStyle = '#4f8';
+      ctx.beginPath(); ctx.moveTo(-8, 7); ctx.lineTo(8, 7); ctx.lineTo(20, 50); ctx.lineTo(-20, 50); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    // Collected sparkle
+    if (alienShip.collected) {
+      ctx.globalAlpha = Math.max(0, 1 - (Date.now() % 2000) / 2000);
+      for (let i = 0; i < 6; i++) {
+        const sa = (Math.PI * 2 / 6) * i + alienShip.phase;
+        const sr = 20 + Math.sin(alienShip.phase + i) * 8;
+        ctx.fillStyle = lightColors[i % 4];
+        ctx.beginPath(); ctx.arc(Math.cos(sa) * sr, Math.sin(sa) * sr, 1.5, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+  }
+
+  drawVoyager(W * 0.15, voyagerY);
+
+  // Speed lines
+  if (speed > 1.5) {
+    ctx.globalAlpha = Math.min(0.3, (speed - 1.5) * 0.1);
+    ctx.strokeStyle = '#48f'; ctx.lineWidth = 1;
+    for (let i = 0; i < 6; i++) {
+      const y = Math.random() * H, len = 20 + speed * 15;
+      ctx.beginPath(); ctx.moveTo(Math.random() * W, y); ctx.lineTo(Math.random() * W - len, y); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Vignette
+  if (distance > 50) {
+    const v = Math.min(0.6, (distance - 50) * 0.003);
+    const vig = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.7);
+    vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, `rgba(0,0,0,${v})`);
+    ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
+  }
+  ctx.restore();
+}
+
+function gameLoop(time) {
+  const dt = Math.min(0.05, (time - lastTime) / 1000);
+  lastTime = time;
+  if (running) { update(dt); draw(); }
+  requestAnimationFrame(gameLoop);
+}
+
+// === NEARBY CELESTIALS for game-over photo ===
+function drawNearbyCelestials(c, pw, ph, d) {
+  // Celestial catalog with AU positions, colors, sizes, and draw hints
+  const bodies = [
+    { au: 0.39, name: '水星', color: '#bbb', r: 4, type: 'rock' },
+    { au: 0.72, name: '金星', color: '#ea8', r: 5, type: 'rock' },
+    { au: 1.0,  name: '地球', color: '#4af', r: 6, type: 'earth' },
+    { au: 1.52, name: '火星', color: '#e54', r: 5, type: 'rock' },
+    { au: 5.2,  name: '木星', color: '#da6', r: 14, type: 'gas', bands: true },
+    { au: 9.5,  name: '土星', color: '#ec8', r: 12, type: 'gas', ring: true },
+    { au: 19.2, name: '天王星', color: '#8de', r: 8, type: 'ice' },
+    { au: 30.1, name: '海王星', color: '#46c', r: 8, type: 'ice' },
+    { au: 39.5, name: '冥王星', color: '#987', r: 2, type: 'rock' },
+    { au: 67,   name: 'セドナ', color: '#c64', r: 2, type: 'rock' },
+    { au: 100,  name: 'ターミネーションショック', color: '#a4f', r: 0, type: 'boundary' },
+    { au: 122,  name: 'ヘリオポーズ', color: '#84d', r: 0, type: 'boundary' },
+    { au: 270,  name: 'オールトの雲 内縁', color: '#556', r: 0, type: 'boundary' },
+    { au: 500,  name: 'プロキシマ・ケンタウリ方面', color: '#fda', r: 1, type: 'star' },
+  ];
+
+  // Find bodies within a "visible range" of the current distance
+  const range = Math.max(5, d * 0.3);
+  const nearby = bodies.filter(b => {
+    const diff = Math.abs(b.au - d);
+    return diff < range && b.au > 0;
+  });
+
+  if (nearby.length === 0) return;
+
+  // Sort by distance from voyager (closest = largest apparent size)
+  nearby.sort((a, b) => Math.abs(a.au - d) - Math.abs(b.au - d));
+
+  // Draw up to 3 nearby bodies at scattered positions
+  const positions = [
+    { x: pw * 0.15, y: ph * 0.3 },
+    { x: pw * 0.8, y: ph * 0.65 },
+    { x: pw * 0.6, y: ph * 0.2 },
+  ];
+
+  for (let i = 0; i < Math.min(nearby.length, 3); i++) {
+    const b = nearby[i];
+    const pos = positions[i];
+    const dist = Math.abs(b.au - d);
+    // Apparent size: closer = bigger, further = smaller
+    const apparentScale = Math.max(0.2, 1 - dist / range);
+    const r = Math.max(1, b.r * apparentScale * 1.5);
+    // Opacity: closer = brighter
+    const alpha = 0.15 + apparentScale * 0.5;
+
+    if (b.type === 'boundary') {
+      // Draw as a faint label
+      c.globalAlpha = alpha * 0.4;
+      c.fillStyle = b.color;
+      c.font = '8px Courier New';
+      c.textAlign = 'center';
+      c.fillText(b.name, pos.x, pos.y);
+      c.globalAlpha = 1;
+      continue;
+    }
+
+    if (b.type === 'star') {
+      // Distant star with diffraction spikes
+      c.globalAlpha = alpha * 0.6;
+      const sg = c.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, 6);
+      sg.addColorStop(0, b.color); sg.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = sg; c.beginPath(); c.arc(pos.x, pos.y, 6, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#fff'; c.beginPath(); c.arc(pos.x, pos.y, 1, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = `rgba(255,255,255,${alpha * 0.3})`; c.lineWidth = 0.5;
+      for (let a = 0; a < 4; a++) {
+        const ang = a * Math.PI / 4;
+        c.beginPath(); c.moveTo(pos.x - Math.cos(ang) * 10, pos.y - Math.sin(ang) * 10);
+        c.lineTo(pos.x + Math.cos(ang) * 10, pos.y + Math.sin(ang) * 10); c.stroke();
+      }
+      c.globalAlpha = alpha * 0.25;
+      c.font = '7px Courier New'; c.textAlign = 'center';
+      c.fillStyle = '#aaa'; c.fillText(b.name, pos.x, pos.y + 12);
+      c.globalAlpha = 1;
+      continue;
+    }
+
+    c.globalAlpha = alpha;
+
+    // Glow
+    c.save();
+    c.globalAlpha = alpha * 0.3;
+    const g2 = c.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, r * 3);
+    g2.addColorStop(0, b.color); g2.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = g2; c.beginPath(); c.arc(pos.x, pos.y, r * 3, 0, Math.PI * 2); c.fill();
+    c.restore();
+
+    // Planet body
+    c.globalAlpha = alpha;
+    const grad = c.createRadialGradient(pos.x - r * 0.3, pos.y - r * 0.3, r * 0.1, pos.x, pos.y, r);
+    grad.addColorStop(0, b.color); grad.addColorStop(1, '#111');
+    c.fillStyle = grad; c.beginPath(); c.arc(pos.x, pos.y, r, 0, Math.PI * 2); c.fill();
+
+    // Earth special: blue with green hints
+    if (b.type === 'earth' && r > 3) {
+      c.fillStyle = 'rgba(50,180,80,0.3)';
+      c.beginPath(); c.arc(pos.x - r * 0.2, pos.y - r * 0.1, r * 0.4, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = 'rgba(100,180,255,0.3)'; c.lineWidth = 1;
+      c.beginPath(); c.arc(pos.x, pos.y, r + 1, 0, Math.PI * 2); c.stroke();
+    }
+
+    // Gas giant bands
+    if (b.bands && r > 4) {
+      c.save(); c.beginPath(); c.arc(pos.x, pos.y, r, 0, Math.PI * 2); c.clip();
+      for (let j = -2; j <= 2; j++) {
+        c.fillStyle = `rgba(0,0,0,${0.08 + Math.abs(j) * 0.03})`;
+        c.fillRect(pos.x - r, pos.y + j * r * 0.3, r * 2, r * 0.15);
+      }
+      c.restore();
+    }
+
+    // Saturn ring
+    if (b.ring && r > 3) {
+      c.strokeStyle = `rgba(220,200,160,${alpha * 0.6})`; c.lineWidth = Math.max(1, r * 0.15);
+      c.beginPath(); c.ellipse(pos.x, pos.y, r * 2, r * 0.4, -0.15, 0, Math.PI * 2); c.stroke();
+    }
+
+    // Label
+    c.globalAlpha = alpha * 0.5;
+    c.fillStyle = '#aaa'; c.font = '7px Courier New'; c.textAlign = 'center';
+    c.fillText(b.name, pos.x, pos.y + r + 10);
+    c.globalAlpha = 1;
+  }
+}
+
+// === GAME OVER ===
+function showGameOver() {
+  gameOverScreen.style.display = 'flex';
+  setTimeout(() => { gameOverScreen.style.opacity = 1; }, 50);
+  const pbdCanvas = document.getElementById('pbd-canvas'), c = pbdCanvas.getContext('2d');
+  const pw = 500, ph = 300;
+  pbdCanvas.width = pw; pbdCanvas.height = ph;
+  c.fillStyle = '#000'; c.fillRect(0, 0, pw, ph);
+
+  // Helper: sensor noise / film grain
+  const addNoise = (count, maxAlpha) => {
+    for (let i = 0; i < count; i++) {
+      c.fillStyle = `rgba(255,255,255,${Math.random() * maxAlpha})`;
+      c.fillRect(Math.random() * pw, Math.random() * ph, 1, 1);
+    }
+  };
+  // Helper: horizontal scan lines (camera artifact)
+  const addScanLines = (alpha) => {
+    c.fillStyle = `rgba(255,255,255,${alpha})`;
+    for (let y = 0; y < ph; y += 3) c.fillRect(0, y, pw, 1);
+  };
+  // Helper: lens flare streak
+  const addLensFlare = (x, y, angle, len, color) => {
+    c.save(); c.translate(x, y); c.rotate(angle);
+    const fg = c.createLinearGradient(-len, 0, len, 0);
+    fg.addColorStop(0, 'rgba(0,0,0,0)');
+    fg.addColorStop(0.4, color);
+    fg.addColorStop(0.5, color);
+    fg.addColorStop(0.6, color);
+    fg.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = fg; c.fillRect(-len, -2, len * 2, 4);
+    c.restore();
+  };
+
+  const d = distance;
+
+  if (d < 2) {
+    // ---- NEAR EARTH: Earth fills a good portion, Moon visible ----
+    // Starfield
+    addNoise(80, 0.06);
+    // Earth — large crescent on the right
+    const ex = pw * 0.65, ey = ph * 0.5, er = 80;
+    const eg = c.createRadialGradient(ex - er * 0.3, ey - er * 0.2, er * 0.1, ex, ey, er);
+    eg.addColorStop(0, '#5599dd'); eg.addColorStop(0.4, '#2266aa'); eg.addColorStop(1, '#0a1830');
+    c.fillStyle = eg; c.beginPath(); c.arc(ex, ey, er, 0, Math.PI * 2); c.fill();
+    // Continents
+    c.fillStyle = 'rgba(50,160,70,0.35)';
+    c.beginPath(); c.ellipse(ex - er * 0.25, ey - er * 0.1, er * 0.25, er * 0.35, 0.2, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(60,140,60,0.3)';
+    c.beginPath(); c.ellipse(ex + er * 0.2, ey - er * 0.15, er * 0.18, er * 0.28, -0.1, 0, Math.PI * 2); c.fill();
+    // Ice caps
+    c.fillStyle = 'rgba(220,235,255,0.4)';
+    c.beginPath(); c.ellipse(ex, ey - er * 0.85, er * 0.35, er * 0.1, 0, 0, Math.PI * 2); c.fill();
+    // Atmosphere glow
+    c.strokeStyle = 'rgba(100,180,255,0.3)'; c.lineWidth = 4;
+    c.beginPath(); c.arc(ex, ey, er + 2, 0, Math.PI * 2); c.stroke();
+    // Cloud wisps
+    c.strokeStyle = 'rgba(255,255,255,0.15)'; c.lineWidth = 3;
+    c.beginPath(); c.arc(ex + 10, ey - 20, 30, 0.3, 1.8); c.stroke();
+    // Shadow (terminator) — dark side
+    const sg = c.createLinearGradient(ex - er, ey, ex + er * 0.3, ey);
+    sg.addColorStop(0, 'rgba(0,0,0,0.85)'); sg.addColorStop(0.5, 'rgba(0,0,0,0.3)'); sg.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = sg; c.beginPath(); c.arc(ex, ey, er, 0, Math.PI * 2); c.fill();
+    // Moon — small, upper left
+    const mx = pw * 0.2, my = ph * 0.25, mr = 8;
+    c.fillStyle = '#bbb'; c.beginPath(); c.arc(mx, my, mr, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(0,0,0,0.15)'; c.beginPath(); c.arc(mx - 2, my - 1, 3, 0, Math.PI * 2); c.fill();
+    // Sun light from left
+    addLensFlare(15, ph * 0.5, 0, 60, 'rgba(255,240,200,0.08)');
+    addScanLines(0.015);
+
+  } else if (d < 10) {
+    // ---- INNER SOLAR SYSTEM: Earth+Moon as small disc, Sun glare ----
+    addNoise(100, 0.05);
+    // Sun glare from bottom-left corner
+    const sg = c.createRadialGradient(30, ph - 30, 0, 30, ph - 30, 180);
+    sg.addColorStop(0, 'rgba(255,230,180,0.25)'); sg.addColorStop(0.3, 'rgba(255,200,120,0.08)'); sg.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = sg; c.beginPath(); c.arc(30, ph - 30, 180, 0, Math.PI * 2); c.fill();
+    addLensFlare(30, ph - 30, -0.5, 200, 'rgba(255,220,150,0.06)');
+    addLensFlare(30, ph - 30, 0.8, 150, 'rgba(255,200,100,0.04)');
+    // Earth — small blue disc
+    const er = Math.max(3, 14 - d);
+    const ex = pw * 0.55, ey = ph * 0.35;
+    const eg = c.createRadialGradient(ex, ey, 0, ex, ey, er);
+    eg.addColorStop(0, '#4488cc'); eg.addColorStop(1, '#1a3355');
+    c.fillStyle = eg; c.beginPath(); c.arc(ex, ey, er, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = 'rgba(100,180,255,0.3)'; c.lineWidth = 1;
+    c.beginPath(); c.arc(ex, ey, er + 1, 0, Math.PI * 2); c.stroke();
+    // Moon dot
+    c.fillStyle = '#999'; c.beginPath(); c.arc(ex + er + 5, ey - 2, Math.max(1, er * 0.2), 0, Math.PI * 2); c.fill();
+    // Scattered stars
+    addNoise(60, 0.04);
+    addScanLines(0.012);
+
+  } else if (d < 40) {
+    // ---- OUTER SOLAR SYSTEM: Pale Blue Dot — the iconic image ----
+    addNoise(120, 0.03);
+    // Scattered light bands (camera lens artifact, like the real photo)
+    const bands = [0.3, 0.48, 0.52, 0.7];
+    for (const bx of bands) {
+      const bg = c.createLinearGradient(bx * pw - 30, 0, bx * pw + 30, ph);
+      bg.addColorStop(0, 'rgba(0,0,0,0)');
+      bg.addColorStop(0.3, `rgba(${80 + Math.random() * 40},${50 + Math.random() * 30},${30 + Math.random() * 20},${0.04 + Math.random() * 0.04})`);
+      bg.addColorStop(0.5, `rgba(${90 + Math.random() * 40},${60 + Math.random() * 30},${40 + Math.random() * 20},${0.06 + Math.random() * 0.04})`);
+      bg.addColorStop(0.7, `rgba(${80 + Math.random() * 40},${50 + Math.random() * 30},${30 + Math.random() * 20},${0.04 + Math.random() * 0.04})`);
+      bg.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = bg; c.fillRect(0, 0, pw, ph);
+    }
+    // The pale blue dot itself — on one of the light bands
+    const dotX = pw * 0.52, dotY = ph * 0.48;
+    c.fillStyle = 'rgba(100,140,220,0.9)'; c.fillRect(dotX, dotY, 1, 1);
+    // Tiny glow around it
+    const dg = c.createRadialGradient(dotX, dotY, 0, dotX, dotY, 4);
+    dg.addColorStop(0, 'rgba(100,150,230,0.15)'); dg.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = dg; c.beginPath(); c.arc(dotX, dotY, 4, 0, Math.PI * 2); c.fill();
+    addScanLines(0.01);
+
+  } else if (d < 122) {
+    // ---- KUIPER BELT / HELIOSHEATH: Sun is a bright star, everything else gone ----
+    addNoise(60, 0.02);
+    // Sun — just a bright star now
+    const sx = pw * 0.4, sy = ph * 0.45;
+    const sunSize = Math.max(1, 4 - (d - 40) * 0.03);
+    // Diffraction spikes
+    c.strokeStyle = 'rgba(255,240,200,0.12)'; c.lineWidth = 1;
+    const spikeLen = 30 + sunSize * 5;
+    for (let a = 0; a < 4; a++) {
+      const angle = a * Math.PI / 4 + 0.2;
+      c.beginPath();
+      c.moveTo(sx - Math.cos(angle) * spikeLen, sy - Math.sin(angle) * spikeLen);
+      c.lineTo(sx + Math.cos(angle) * spikeLen, sy + Math.sin(angle) * spikeLen);
+      c.stroke();
+    }
+    // Sun glow
+    const sug = c.createRadialGradient(sx, sy, 0, sx, sy, 20);
+    sug.addColorStop(0, 'rgba(255,250,230,0.5)'); sug.addColorStop(0.2, 'rgba(255,230,180,0.15)'); sug.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = sug; c.beginPath(); c.arc(sx, sy, 20, 0, Math.PI * 2); c.fill();
+    // Sun core
+    c.fillStyle = '#ffe8c0'; c.beginPath(); c.arc(sx, sy, sunSize, 0, Math.PI * 2); c.fill();
+    // A few faint background stars
+    addNoise(30, 0.025);
+    // Faint label
+    c.fillStyle = 'rgba(255,255,255,0.06)'; c.font = '9px Courier New'; c.textAlign = 'center';
+    c.fillText('Sol', sx, sy + 18);
+    addScanLines(0.008);
+
+  } else if (d < 300) {
+    // ---- INTERSTELLAR: Sun is one star among many, Milky Way band ----
+    // Deep black
+    addNoise(40, 0.015);
+    // Milky Way band — diagonal haze
+    c.save(); c.translate(pw / 2, ph / 2); c.rotate(-0.3);
+    const mw = c.createLinearGradient(0, -40, 0, 40);
+    mw.addColorStop(0, 'rgba(0,0,0,0)');
+    mw.addColorStop(0.3, 'rgba(60,50,70,0.06)');
+    mw.addColorStop(0.5, 'rgba(80,70,90,0.1)');
+    mw.addColorStop(0.7, 'rgba(60,50,70,0.06)');
+    mw.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = mw; c.fillRect(-pw, -50, pw * 2, 100);
+    // Star clusters in the band
+    for (let i = 0; i < 80; i++) {
+      const sx = (Math.random() - 0.5) * pw * 1.5;
+      const sy = (Math.random() - 0.5) * 60;
+      const br = Math.random() * 0.06;
+      c.fillStyle = `rgba(200,190,220,${br})`;
+      c.fillRect(sx, sy, 1, 1);
+    }
+    c.restore();
+    // Sun — indistinguishable, just one of many stars, but slightly warmer
+    const sx = pw * 0.35 + Math.random() * 20, sy = ph * 0.42 + Math.random() * 10;
+    c.fillStyle = 'rgba(255,240,200,0.08)';
+    c.beginPath(); c.arc(sx, sy, 2, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,250,230,0.3)'; c.fillRect(sx, sy, 1, 1);
+    // Sparse stars
+    addNoise(25, 0.02);
+    addScanLines(0.006);
+
+  } else if (d < 600) {
+    // ---- GALACTIC OUTER RIM: Galaxy seen from outside, spiral hint ----
+    addNoise(20, 0.01);
+    // The Milky Way as a distant galaxy — elliptical smudge
+    const gx = pw * 0.5, gy = ph * 0.48;
+    c.save(); c.translate(gx, gy); c.rotate(0.4);
+    // Core glow
+    const core = c.createRadialGradient(0, 0, 0, 0, 0, 50);
+    core.addColorStop(0, 'rgba(200,180,150,0.12)');
+    core.addColorStop(0.3, 'rgba(150,130,120,0.06)');
+    core.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = core; c.beginPath(); c.ellipse(0, 0, 70, 25, 0, 0, Math.PI * 2); c.fill();
+    // Spiral arm hints
+    c.strokeStyle = 'rgba(160,150,180,0.04)'; c.lineWidth = 8;
+    c.beginPath(); c.arc(5, 0, 40, 0.5, 2.5); c.stroke();
+    c.beginPath(); c.arc(-5, 0, 45, 3.5, 5.5); c.stroke();
+    // Dust lane
+    c.strokeStyle = 'rgba(0,0,0,0.05)'; c.lineWidth = 3;
+    c.beginPath(); c.ellipse(0, 0, 55, 3, 0.1, 0, Math.PI * 2); c.stroke();
+    c.restore();
+    // Very few stars
+    addNoise(10, 0.012);
+    addScanLines(0.004);
+
+  } else {
+    // ---- INTERGALACTIC VOID: Almost nothing. Pure emptiness. ----
+    // Extremely sparse
+    addNoise(5, 0.008);
+    // One or two impossibly faint galaxy smudges at the edge of perception
+    const gx = pw * 0.3 + Math.random() * pw * 0.4;
+    const gy = ph * 0.3 + Math.random() * ph * 0.4;
+    const fg = c.createRadialGradient(gx, gy, 0, gx, gy, 12);
+    fg.addColorStop(0, 'rgba(140,130,160,0.03)'); fg.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = fg; c.beginPath(); c.ellipse(gx, gy, 12, 5, Math.random() * Math.PI, 0, Math.PI * 2); c.fill();
+    // Heavy noise / static — signal degradation
+    for (let i = 0; i < 30; i++) {
+      const ny = Math.random() * ph;
+      c.fillStyle = `rgba(255,255,255,${0.01 + Math.random() * 0.02})`;
+      c.fillRect(0, ny, pw, 1);
+    }
+    addScanLines(0.003);
+  }
+
+  // === Draw nearby celestial bodies based on distance ===
+  drawNearbyCelestials(c, pw, ph, d);
+
+  // === Timestamp overlay on all images ===
+  c.fillStyle = 'rgba(255,255,255,0.08)'; c.font = '9px Courier New'; c.textAlign = 'left';
+  c.fillText(`VGR-1  ${distance.toFixed(2)} AU  PWR: 0%`, 8, ph - 8);
+  c.textAlign = 'right';
+  c.fillText('LAST TRANSMISSION', pw - 8, ph - 8);
+
+  const zoneName = getZone(distance).name;
+  const ZONE_NAMES_JA = {
+    'Inner Solar System': '内太陽系', 'Outer Solar System': '外太陽系',
+    'Kuiper Belt': 'カイパーベルト', 'Heliosheath': 'ヘリオシース',
+    'Interstellar Space': '星間空間', 'Galactic Outer Rim': '銀河外縁部',
+    'Intergalactic Void': '銀河間空間',
+  };
+  const zoneJa = ZONE_NAMES_JA[zoneName] || zoneName;
+  const lines = [
+    '通信ログ: 通信リンク断絶...',
+    '',
+    `最終受信データ: ${distance.toFixed(2)} AU`,
+    `最終確認宙域: ${zoneJa}`,
+  ];
+  if (alienEncountered) {
+    lines.push('');
+    lines.push('📡 特記: 未知の知性体との接触を確認');
+    lines.push('　 ゴールデンレコードへの応答あり');
+  }
+  lines.push('');
+  lines.push('ステータス: 虚空を漂流中...');
+  typewriterEffect(lines);
+}
+
+function typewriterEffect(lines) {
+  logText.innerHTML = '';
+  let lineIdx = 0, charIdx = 0, span = document.createElement('div');
+  logText.appendChild(span);
+  function tick() {
+    if (lineIdx >= lines.length) { restartBtn.style.opacity = 1; return; }
+    const line = lines[lineIdx];
+    if (charIdx < line.length) { span.textContent += line[charIdx]; charIdx++; setTimeout(tick, 30 + Math.random() * 20); }
+    else { lineIdx++; charIdx = 0; span = document.createElement('div'); logText.appendChild(span); setTimeout(tick, 250); }
+  }
+  tick();
+}
+
+// === SOUND CONTROLS ===
+const btnBgm = document.getElementById('btn-bgm');
+const btnSfx = document.getElementById('btn-sfx');
+btnBgm.addEventListener('click', () => {
+  bgmMuted = !bgmMuted;
+  if (bgmGainNode) bgmGainNode.gain.value = bgmMuted ? 0 : 1;
+  btnBgm.textContent = bgmMuted ? '🎵❌' : '🎵';
+  btnBgm.classList.toggle('muted', bgmMuted);
+});
+btnSfx.addEventListener('click', () => {
+  sfxMuted = !sfxMuted;
+  if (sfxGainNode) sfxGainNode.gain.value = sfxMuted ? 0 : 1;
+  btnSfx.textContent = sfxMuted ? '🔇' : '🔊';
+  btnSfx.classList.toggle('muted', sfxMuted);
+});
+
+// === CONTROLS ===
+window.addEventListener('keydown', e => {
+  keys[e.key] = true;
+  if (e.code === 'Space' && running) { e.preventDefault(); activateShield(); }
+});
+window.addEventListener('keyup', e => { keys[e.key] = false; });
+canvas.addEventListener('mousemove', e => { if (running) mouseY = e.clientY; });
+canvas.addEventListener('mouseleave', () => { mouseY = null; });
+canvas.addEventListener('touchmove', e => { e.preventDefault(); if (running) touchY = e.touches[0].clientY; }, { passive: false });
+canvas.addEventListener('touchend', () => { touchY = null; });
+// Double-tap for shield on mobile
+let lastTap = 0;
+canvas.addEventListener('touchstart', e => {
+  const now = Date.now();
+  if (now - lastTap < 300 && running) activateShield();
+  lastTap = now;
+});
+
+// === START / RESTART ===
+const countdownOverlay = document.getElementById('countdown-overlay');
+const countdownText = document.getElementById('countdown-text');
+
+function startCountdown(onComplete) {
+  initAudio();
+  initGame();
+  // Draw the initial scene behind the countdown
+  draw();
+  countdownOverlay.style.display = 'flex';
+  const steps = ['3', '2', '1', 'LAUNCH'];
+  let i = 0;
+  function tick() {
+    if (i >= steps.length) {
+      countdownOverlay.style.display = 'none';
+      countdownText.style.opacity = 0;
+      onComplete();
+      return;
+    }
+    countdownText.textContent = steps[i];
+    countdownText.style.opacity = 1;
+    countdownText.style.fontSize = steps[i] === 'LAUNCH' ? '48px' : '72px';
+    // Countdown beep
+    if (audioCtx) {
+      const freq = steps[i] === 'LAUNCH' ? 660 : 440;
+      playSfx(freq, 'sine', 0.05, 0.15);
+    }
+    // Scale-up animation via transform
+    countdownText.style.transform = 'scale(1.3)';
+    countdownText.style.transition = 'opacity 0.2s, transform 0.7s ease-out';
+    requestAnimationFrame(() => { countdownText.style.transform = 'scale(1)'; });
+    setTimeout(() => { countdownText.style.opacity = 0; }, 650);
+    i++;
+    setTimeout(tick, 900);
+  }
+  tick();
+}
+
+startBtn.addEventListener('click', () => {
+  startScreen.style.display = 'none';
+  startCountdown(() => {
+    running = true; lastTime = performance.now();
+    requestAnimationFrame(gameLoop);
+  });
+});
+restartBtn.addEventListener('click', () => {
+  gameOverScreen.style.opacity = 0;
+  setTimeout(() => {
+    gameOverScreen.style.display = 'none'; restartBtn.style.opacity = 0;
+    glitch.style.opacity = 0; lowPowerOv.style.opacity = 0;
+    startCountdown(() => {
+      running = true; lastTime = performance.now();
+      requestAnimationFrame(gameLoop);
+    });
+  }, 500);
+});
+</script>
+</body>
+</html>
